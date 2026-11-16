@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
+import urlRoutes from "./routes/url.routes.js";
 
 dotenv.config();
 
@@ -11,6 +12,9 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+//Routes
+app.use("/api/urls", urlRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
