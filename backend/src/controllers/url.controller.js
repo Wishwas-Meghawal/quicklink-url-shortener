@@ -166,5 +166,50 @@ export const redirectUrl = async (req, res) => {
 
 
 
+export const getUrlStats = async (req, res) => {
+  try {
+    const { shortCode } = req.params;
+
+    // Find URL by short code
+    const url = await URLModel.findOne({ shortCode });
+
+    // Check if URL exists
+    if (!url) {
+      return res.status(404).json({
+        success: false,
+        message: "Short URL not found",
+      });
+    }
+
+    // Generate short URL
+    const baseUrl = (
+      process.env.BASE_URL || "http://localhost:5000"
+    ).replace(/\/+$/, "");
+
+    const shortUrl = `${baseUrl}/${url.shortCode}`;
+
+    // Return analytics
+    return res.status(200).json({
+      success: true,
+      data: {
+        originalUrl: url.originalUrl,
+        shortCode: url.shortCode,
+        shortUrl,
+        clicks: url.clicks,
+        createdAt: url.createdAt,
+      },
+    });
+
+  } catch (error) {
+    console.error("Get URL Stats Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 
 
