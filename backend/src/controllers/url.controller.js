@@ -1,5 +1,5 @@
 
-import URLModel  from "../models/url.model.js";
+import URLModel from "../models/url.model.js";
 import { customAlphabet } from "nanoid";
 
 const generateCode = customAlphabet(
@@ -19,11 +19,20 @@ export const createShortUrl = async (req, res) => {
       });
     }
 
-    // 2. Validate URL format and protocol
+    const trimmedUrl = originalUrl.trim();
+
+    if (trimmedUrl.length > 2048) {
+      return res.status(400).json({
+        success: false,
+        message: "URL cannot exceed 2048 characters",
+      });
+    }
+
+    // 2. Validate URL
     let parsedUrl;
 
     try {
-      parsedUrl = new globalThis.URL(originalUrl.trim());
+      parsedUrl = new globalThis.URL(trimmedUrl);
     } catch {
       return res.status(400).json({
         success: false,
@@ -38,7 +47,7 @@ export const createShortUrl = async (req, res) => {
       });
     }
 
-    // 3. Generate unique short code and save
+    // 3. Generate unique code and save
     let savedUrl;
 
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -52,8 +61,10 @@ export const createShortUrl = async (req, res) => {
 
         break;
       } catch (error) {
-        // Retry only if shortCode has a duplicate key
-        if (error.code === 11000) {
+        if (
+          error.code === 11000 &&
+          error.keyPattern?.shortCode
+        ) {
           continue;
         }
 
@@ -61,16 +72,22 @@ export const createShortUrl = async (req, res) => {
       }
     }
 
+    // 4. Handle code generation failure
     if (!savedUrl) {
       return res.status(503).json({
         success: false,
-        message: "Unable to generate a unique short code. Try again.",
+        message: "Unable to generate unique short code",
       });
     }
 
-    // 4. Return response
-    const shortUrl = `${process.env.BASE_URL}/${savedUrl.shortCode}`;
+    // 5. Generate short URL
+    const baseUrl = (
+      process.env.BASE_URL || "http://localhost:5000"
+    ).replace(/\/+$/, "");
 
+    const shortUrl = `${baseUrl}/${savedUrl.shortCode}`;
+
+    // 6. Send response
     return res.status(201).json({
       success: true,
       message: "Short URL created successfully",
@@ -92,3 +109,62 @@ export const createShortUrl = async (req, res) => {
     });
   }
 };
+
+
+
+
+export const redirectUrl = async (req, res) => {
+  try {
+    const { shortCode } = req.params;
+
+    // Find URL and increment click count
+    const url = await URLModel.findOneAndUpdate(
+      {
+        shortCode,
+        $or: [
+          { expiresAt: null },
+          { expiresAt: { $gt: new Date() } },
+        ],
+      },
+      {
+        $inc: { clicks: 1 },
+      },
+      {
+        new: true,
+      }
+    );
+
+    // URL not found or expired
+    if (!url) {
+      const existingUrl = await URLModel.findOne({ shortCode });
+
+      if (!existingUrl) {
+        return res.status(404).json({
+          success: false,
+          message: "Short URL not found",
+        });
+      }
+
+      return res.status(410).json({
+        success: false,
+        message: "This short URL has expired",
+      });
+    }
+
+    // Redirect to original URL
+    return res.redirect(302, url.originalUrl);
+
+  } catch (error) {
+    console.error("Redirect URL Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+
+
