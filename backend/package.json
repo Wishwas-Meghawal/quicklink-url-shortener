@@ -1,0 +1,24 @@
+{
+  "name": "quicklink-backend",
+  "version": "1.0.0",
+   "type": "module",
+  "description": "QuickLink backend API",
+  "main": "src/server.js",
+   "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "mongoose": "^8.24.9",
+    "nanoid": "^6.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
